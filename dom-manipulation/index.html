@@ -244,6 +244,60 @@
             color: #666;
         }
         
+        .json-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .json-btn {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .json-btn:hover {
+            background-color: #218838;
+            transform: translateY(-2px);
+        }
+        
+        .import-btn {
+            background-color: #17a2b8;
+        }
+        
+        .import-btn:hover {
+            background-color: #138496;
+        }
+        
+        .file-input {
+            display: none;
+        }
+        
+        .file-label {
+            background-color: #17a2b8;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .file-label:hover {
+            background-color: #138496;
+            transform: translateY(-2px);
+        }
+        
         @media (max-width: 600px) {
             .container {
                 padding: 15px;
@@ -255,6 +309,10 @@
             
             .category-selector {
                 justify-content: center;
+            }
+            
+            .json-actions {
+                flex-direction: column;
             }
         }
     </style>
@@ -274,6 +332,12 @@
         </div>
         
         <button id="newQuote">Show New Quote</button>
+        
+        <div class="json-actions">
+            <button id="exportJson" class="json-btn">Export Quotes</button>
+            <input type="file" id="importFile" class="file-input" accept=".json">
+            <label for="importFile" class="file-label">Import Quotes</label>
+        </div>
         
         <div class="add-quote-form">
             <h3>Add Your Own Quote</h3>
@@ -306,6 +370,5 @@
             </div>
         </div>
     </div>
-    <script src="script.js"></script>
 </body>
 </html>
