@@ -9,7 +9,7 @@ let quotes = JSON.parse(localStorage.getItem('quotes')) || [
             { text: "Success is not final, failure is not fatal: it is the courage to continue that counts.", category: "Success" }
         ];
 
-        let currentCategory = "all";
+        let selectedCategory = "all";
 
         // Initialize the application
         document.addEventListener('DOMContentLoaded', function() {
@@ -28,7 +28,7 @@ let quotes = JSON.parse(localStorage.getItem('quotes')) || [
             // Load last selected filter from local storage
             const lastFilter = localStorage.getItem('lastFilter');
             if (lastFilter) {
-                currentCategory = lastFilter;
+                selectedCategory = lastFilter;
                 document.getElementById('categoryFilter').value = lastFilter;
                 filterQuotes();
             }
@@ -61,15 +61,15 @@ let quotes = JSON.parse(localStorage.getItem('quotes')) || [
         function showRandomQuote() {
             const quoteDisplay = document.getElementById('quoteDisplay');
             
-            // Filter quotes by category if needed
+            // Filter quotes by selectedCategory if needed
             let filteredQuotes = quotes;
-            if (currentCategory !== "all") {
-                filteredQuotes = quotes.filter(quote => quote.category === currentCategory);
+            if (selectedCategory !== "all") {
+                filteredQuotes = quotes.filter(quote => quote.category === selectedCategory);
             }
             
             if (filteredQuotes.length === 0) {
                 quoteDisplay.innerHTML = `
-                    <p class="quote-text">No quotes available in this category. Add some quotes!</p>
+                    <p class="quote-text">No quotes available in this selectedCategory. Add some quotes!</p>
                     <span class="quote-category">Empty</span>
                 `;
                 return;
@@ -108,25 +108,25 @@ let quotes = JSON.parse(localStorage.getItem('quotes')) || [
             });
             
             // Set the current filter if it exists
-            if (currentCategory) {
-                categoryFilter.value = currentCategory;
+            if (selectedCategory) {
+                categoryFilter.value = selectedCategory;
             }
         }
 
         // Function to filter quotes based on selected category
         function filterQuotes() {
             const categoryFilter = document.getElementById('categoryFilter');
-            currentCategory = categoryFilter.value;
+            selectedCategory = categoryFilter.value;
             
             // Save the selected filter to local storage
-            localStorage.setItem('lastFilter', currentCategory);
+            localStorage.setItem('lastFilter', selectedCategory);
             
             // Update the UI
             updateCategoryButtons();
             displayQuotesList();
             updateStats();
             
-            // Show a random quote from the filtered category
+            // Show a random quote from the filtered selectedCategory
             showRandomQuote();
         }
 
@@ -296,9 +296,9 @@ let quotes = JSON.parse(localStorage.getItem('quotes')) || [
                     this.style.backgroundColor = '#4CAF50';
                     this.style.color = 'white';
                     
-                    // Update current category and show a quote
-                    currentCategory = this.getAttribute('data-category');
-                    document.getElementById('categoryFilter').value = currentCategory;
+                    // Update selectedCategory and show a quote
+                    selectedCategory = this.getAttribute('data-category');
+                    document.getElementById('categoryFilter').value = selectedCategory;
                     filterQuotes();
                 });
                 
@@ -319,7 +319,7 @@ let quotes = JSON.parse(localStorage.getItem('quotes')) || [
                 button.style.borderRadius = '4px';
                 button.style.cursor = 'pointer';
                 
-                if (category === currentCategory) {
+                if (category === selectedCategory) {
                     button.style.backgroundColor = '#4CAF50';
                     button.style.color = 'white';
                 }
@@ -333,9 +333,9 @@ let quotes = JSON.parse(localStorage.getItem('quotes')) || [
                     this.style.backgroundColor = '#4CAF50';
                     this.style.color = 'white';
                     
-                    // Update current category and show a quote
-                    currentCategory = this.getAttribute('data-category');
-                    document.getElementById('categoryFilter').value = currentCategory;
+                    // Update selectedCategory and show a quote
+                    selectedCategory = this.getAttribute('data-category');
+                    document.getElementById('categoryFilter').value = selectedCategory;
                     filterQuotes();
                 });
                 
@@ -367,14 +367,14 @@ let quotes = JSON.parse(localStorage.getItem('quotes')) || [
                 quotesList.innerHTML = '';
             }
             
-            // Filter quotes if a category is selected
+            // Filter quotes if a selectedCategory is selected
             let filteredQuotes = quotes;
-            if (currentCategory !== "all") {
-                filteredQuotes = quotes.filter(quote => quote.category === currentCategory);
+            if (selectedCategory !== "all") {
+                filteredQuotes = quotes.filter(quote => quote.category === selectedCategory);
             }
             
             if (filteredQuotes.length === 0) {
-                quotesList.innerHTML = '<p>No quotes available in this category. Add some quotes to get started!</p>';
+                quotesList.innerHTML = '<p>No quotes available in this selectedCategory. Add some quotes to get started!</p>';
                 return;
             }
             
@@ -448,8 +448,8 @@ let quotes = JSON.parse(localStorage.getItem('quotes')) || [
             
             // Calculate filtered quotes count
             let filteredQuotesCount = quotes.length;
-            if (currentCategory !== "all") {
-                filteredQuotesCount = quotes.filter(quote => quote.category === currentCategory).length;
+            if (selectedCategory !== "all") {
+                filteredQuotesCount = quotes.filter(quote => quote.category === selectedCategory).length;
             }
             
             const totalQuotes = document.createElement('div');
