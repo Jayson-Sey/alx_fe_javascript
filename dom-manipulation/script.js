@@ -10,6 +10,10 @@ let quotes = JSON.parse(localStorage.getItem('quotes')) || [
         ];
 
         let selectedCategory = "all";
+        let autoSyncEnabled = false;
+        let autoSyncInterval;
+        let conflicts = [];
+        let lastSyncTime = localStorage.getItem('lastSyncTime') || null;
 
         // Initialize the application
         document.addEventListener('DOMContentLoaded', function() {
@@ -39,17 +43,25 @@ let quotes = JSON.parse(localStorage.getItem('quotes')) || [
             displayQuotesList();
             updateStats();
             
-            // Add event listener for the "Show New Quote" button
+            // Add event listeners
             document.getElementById('newQuote').addEventListener('click', showRandomQuote);
-            
-            // Add event listener for export button
             document.getElementById('exportJson').addEventListener('click', exportToJson);
-            
-            // Add event listener for import file input
             document.getElementById('importFile').addEventListener('change', importFromJsonFile);
-            
-            // Add event listener for category filter dropdown
             document.getElementById('categoryFilter').addEventListener('change', filterQuotes);
+            
+            // Sync event listeners
+            document.getElementById('syncNow').addEventListener('click', syncWithServer);
+            document.getElementById('toggleAutoSync').addEventListener('click', toggleAutoSync);
+            document.getElementById('resolveConflicts').addEventListener('click', showConflictResolution);
+            
+            // Conflict resolution event listeners
+            document.getElementById('keepLocal').addEventListener('click', () => resolveConflicts('keepLocal'));
+            document.getElementById('keepServer').addEventListener('click', () => resolveConflicts('keepServer'));
+            document.getElementById('mergeData').addEventListener('click', () => resolveConflicts('merge'));
+            document.getElementById('cancelResolution').addEventListener('click', hideConflictResolution);
+            
+            // Initial sync check
+            setTimeout(syncWithServer, 1000);
         });
 
         // Function to save quotes to local storage
@@ -69,7 +81,7 @@ let quotes = JSON.parse(localStorage.getItem('quotes')) || [
             
             if (filteredQuotes.length === 0) {
                 quoteDisplay.innerHTML = `
-                    <p class="quote-text">No quotes available in this selectedCategory. Add some quotes!</p>
+                    <p class="quote-text">No quotes available in this category. Add some quotes!</p>
                     <span class="quote-category">Empty</span>
                 `;
                 return;
@@ -245,7 +257,7 @@ let quotes = JSON.parse(localStorage.getItem('quotes')) || [
             updateStats();
             
             // Show confirmation
-            alert('Quote added successfully!');
+            showNotification('Quote added successfully!', 'success');
         }
 
         // Function to update category buttons
@@ -374,7 +386,7 @@ let quotes = JSON.parse(localStorage.getItem('quotes')) || [
             }
             
             if (filteredQuotes.length === 0) {
-                quotesList.innerHTML = '<p>No quotes available in this selectedCategory. Add some quotes to get started!</p>';
+                quotesList.innerHTML = '<p>No quotes available in this category. Add some quotes to get started!</p>';
                 return;
             }
             
@@ -422,6 +434,8 @@ let quotes = JSON.parse(localStorage.getItem('quotes')) || [
                 
                 // If we deleted the currently displayed quote, show a new one
                 showRandomQuote();
+                
+                showNotification('Quote deleted successfully!', 'success');
             }
         }
 
@@ -506,7 +520,7 @@ let quotes = JSON.parse(localStorage.getItem('quotes')) || [
             document.body.removeChild(link);
             URL.revokeObjectURL(url);
             
-            alert('Quotes exported successfully!');
+            showNotification('Quotes exported successfully!', 'success');
         }
 
         // Function to import quotes from JSON file
@@ -543,10 +557,224 @@ let quotes = JSON.parse(localStorage.getItem('quotes')) || [
                     // Reset file input
                     event.target.value = '';
                     
-                    alert('Quotes imported successfully!');
+                    showNotification('Quotes imported successfully!', 'success');
                 } catch (error) {
-                    alert('Error importing quotes: ' + error.message);
+                    showNotification('Error importing quotes: ' + error.message, 'error');
                 }
             };
             fileReader.readAsText(file);
+        }
+
+        // SERVER SYNC FUNCTIONS
+
+        // Function to simulate server interaction
+        async function fetchFromServer() {
+            // Simulate API call with random delay
+            await new Promise(resolve => setTimeout(resolve, Math.random() * 1000 + 500));
+            
+            // Return mock server data
+            const serverQuotes = JSON.parse(localStorage.getItem('serverQuotes')) || [
+                { text: "The only way to do great work is to love what you do.", category: "Motivation" },
+                { text: "Life is what happens to you while you're busy making other plans.", category: "Life" },
+                { text: "In the middle of difficulty lies opportunity.", category: "Wisdom" },
+                { text: "It does not matter how slowly you go as long as you do not stop.", category: "Perseverance" },
+                { text: "The future belongs to those who believe in the beauty of their dreams.", category: "Dreams" },
+                { text: "Be the change that you wish to see in the world.", category: "Inspiration" },
+                { text: "The only true wisdom is in knowing you know nothing.", category: "Wisdom" },
+                { text: "Success is not final, failure is not fatal: it is the courage to continue that counts.", category: "Success" },
+                { text: "Simulated server quote 1", category: "Server" },
+                { text: "Simulated server quote 2", category: "Server" }
+            ];
+            
+            // Occasionally add a new quote to simulate server updates
+            if (Math.random() > 0.7) {
+                const newQuotes = [
+                    "The best time to plant a tree was 20 years ago. The second best time is now.",
+                    "Your time is limited, so don't waste it living someone else's life.",
+                    "The only limit to our realization of tomorrow will be our doubts of today.",
+                    "It's not whether you get knocked down, it's whether you get up.",
+                    "If you look at what you have in life, you'll always have more."
+                ];
+                const newCategories = ["Wisdom", "Life", "Motivation", "Perseverance", "Gratitude"];
+                
+                const randomIndex = Math.floor(Math.random() * newQuotes.length);
+                serverQuotes.push({
+                    text: newQuotes[randomIndex],
+                    category: newCategories[randomIndex]
+                });
+                
+                // Save updated server data
+                localStorage.setItem('serverQuotes', JSON.stringify(serverQuotes));
+            }
+            
+            return serverQuotes;
+        }
+
+        // Function to sync with server
+        async function syncWithServer() {
+            try {
+                showNotification('Syncing with server...', 'info');
+                
+                const serverQuotes = await fetchFromServer();
+                const localQuotes = [...quotes];
+                
+                // Detect conflicts
+                conflicts = detectConflicts(localQuotes, serverQuotes);
+                
+                if (conflicts.length > 0) {
+                    showNotification(`Found ${conflicts.length} conflicts that need resolution`, 'warning');
+                    showConflictResolution();
+                } else {
+                    // No conflicts, merge data with server taking precedence
+                    const mergedQuotes = mergeQuotes(localQuotes, serverQuotes);
+                    quotes = mergedQuotes;
+                    saveQuotes();
+                    
+                    // Update UI
+                    populateCategories();
+                    updateCategoryButtons();
+                    displayQuotesList();
+                    updateStats();
+                    
+                    showNotification('Sync completed successfully!', 'success');
+                }
+                
+                // Update last sync time
+                lastSyncTime = new Date().toISOString();
+                localStorage.setItem('lastSyncTime', lastSyncTime);
+                
+            } catch (error) {
+                showNotification('Sync failed: ' + error.message, 'error');
+            }
+        }
+
+        // Function to detect conflicts between local and server data
+        function detectConflicts(localQuotes, serverQuotes) {
+            const conflicts = [];
+            
+            // Find quotes with same text but different categories
+            localQuotes.forEach(localQuote => {
+                const serverQuote = serverQuotes.find(sq => sq.text === localQuote.text);
+                if (serverQuote && serverQuote.category !== localQuote.category) {
+                    conflicts.push({
+                        text: localQuote.text,
+                        localCategory: localQuote.category,
+                        serverCategory: serverQuote.category
+                    });
+                }
+            });
+            
+            return conflicts;
+        }
+
+        // Function to merge quotes (server takes precedence)
+        function mergeQuotes(localQuotes, serverQuotes) {
+            const merged = [...serverQuotes];
+            
+            // Add local quotes that don't exist in server
+            localQuotes.forEach(localQuote => {
+                const exists = merged.some(quote => quote.text === localQuote.text);
+                if (!exists) {
+                    merged.push(localQuote);
+                }
+            });
+            
+            return merged;
+        }
+
+        // Function to toggle auto sync
+        function toggleAutoSync() {
+            autoSyncEnabled = !autoSyncEnabled;
+            const button = document.getElementById('toggleAutoSync');
+            
+            if (autoSyncEnabled) {
+                button.textContent = 'Auto Sync: On';
+                autoSyncInterval = setInterval(syncWithServer, 30000); // Sync every 30 seconds
+                showNotification('Auto sync enabled', 'success');
+            } else {
+                button.textContent = 'Auto Sync: Off';
+                clearInterval(autoSyncInterval);
+                showNotification('Auto sync disabled', 'info');
+            }
+        }
+
+        // Function to show conflict resolution dialog
+        function showConflictResolution() {
+            const conflictList = document.getElementById('conflictList');
+            conflictList.innerHTML = '';
+            
+            if (conflicts.length === 0) {
+                conflictList.innerHTML = '<p>No conflicts to resolve.</p>';
+            } else {
+                conflicts.forEach((conflict, index) => {
+                    const conflictItem = document.createElement('div');
+                    conflictItem.className = 'conflict-item';
+                    conflictItem.innerHTML = `
+                        <p><strong>Quote:</strong> "${conflict.text}"</p>
+                        <p><strong>Local Category:</strong> ${conflict.localCategory}</p>
+                        <p><strong>Server Category:</strong> ${conflict.serverCategory}</p>
+                    `;
+                    conflictList.appendChild(conflictItem);
+                });
+            }
+            
+            document.getElementById('conflictResolution').classList.add('show');
+        }
+
+        // Function to hide conflict resolution dialog
+        function hideConflictResolution() {
+            document.getElementById('conflictResolution').classList.remove('show');
+        }
+
+        // Function to resolve conflicts
+        function resolveConflicts(resolutionType) {
+            if (resolutionType === 'keepLocal') {
+                // Keep local data, ignore server conflicts
+                showNotification('Keeping local data', 'info');
+            } else if (resolutionType === 'keepServer') {
+                // Apply server data to resolve conflicts
+                conflicts.forEach(conflict => {
+                    const quoteIndex = quotes.findIndex(q => q.text === conflict.text);
+                    if (quoteIndex !== -1) {
+                        quotes[quoteIndex].category = conflict.serverCategory;
+                    }
+                });
+                saveQuotes();
+                showNotification('Applied server changes', 'success');
+            } else if (resolutionType === 'merge') {
+                // Merge strategy - keep both versions
+                conflicts.forEach(conflict => {
+                    const existingQuote = quotes.find(q => q.text === conflict.text);
+                    if (existingQuote) {
+                        // Create a modified version with server category
+                        quotes.push({
+                            text: conflict.text,
+                            category: conflict.serverCategory
+                        });
+                    }
+                });
+                saveQuotes();
+                showNotification('Merged server and local data', 'success');
+            }
+            
+            // Update UI
+            populateCategories();
+            updateCategoryButtons();
+            displayQuotesList();
+            updateStats();
+            
+            // Clear conflicts and hide dialog
+            conflicts = [];
+            hideConflictResolution();
+        }
+
+        // Function to show notifications
+        function showNotification(message, type) {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.className = `notification ${type} show`;
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
         }
